@@ -23,5 +23,5 @@ try {
  $assets=@('wh-windows-amd64.exe','wh-linux-amd64','iroh-ssh-windows-amd64.exe','iroh-ssh-linux-amd64','bootstrap.ps1','bootstrap.sh','licenses.zip')
  $lines=foreach($name in $assets){(Get-FileHash ('dist/'+$name)).Hash.ToLower()+'  '+$name}
  [IO.File]::WriteAllText((Join-Path $PWD 'dist/SHA256SUMS'),($lines -join "`n")+"`n",[Text.UTF8Encoding]::new($false))
- if($Publish){ gh release create v0.1.2 @($assets|ForEach-Object{'dist/'+$_}) dist/SHA256SUMS LICENSE THIRD_PARTY.md --prerelease --title 'SSH Wormhole 0.1.2' --notes-file RELEASE.md; if($LASTEXITCODE){throw 'Release failed'} }
+ if($Publish){ gh release create v0.1.3 @($assets|ForEach-Object{'dist/'+$_}) dist/SHA256SUMS LICENSE THIRD_PARTY.md --prerelease --title 'SSH Wormhole 0.1.3' --notes-file RELEASE.md; if($LASTEXITCODE){throw 'Release failed'} }
 } finally { $env:GOOS=$null; Pop-Location }

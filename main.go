@@ -34,7 +34,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.1.2"
+const version = "0.1.3"
 const lifetime = 2 * time.Hour
 
 var endpointPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -666,6 +666,33 @@ func dial(ctx context.Context, d invitation) (*ssh.Client, error) {
 	}
 	p.SetDeadline(time.Time{})
 	c := ssh.NewClient(conn, ch, req)
+	// Iroh can leave its stdio pipe open after a network failure. Bound that
+	// failure at the SSH layer rather than waiting for the two-hour expiry.
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-p.done:
+				return
+			case <-ticker.C:
+				answer := make(chan error, 1)
+				go func() { _, _, e := c.SendRequest("keepalive@openssh.com", true, nil); answer <- e }()
+				select {
+				case <-p.done:
+					return
+				case e := <-answer:
+					if e != nil {
+						c.Close()
+						return
+					}
+				case <-time.After(10 * time.Second):
+					c.Close()
+					return
+				}
+			}
+		}
+	}()
 	go func() {
 		select {
 		case <-ctx.Done():
