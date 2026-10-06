@@ -9,7 +9,7 @@ function FileHash($file) {
 }
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'This release supports Windows x64.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$version = '0.1.4'
+$version = '0.1.5'
 $base = 'https://github.com/heetbeet/ssh-magic/releases/download/v'+$version
 $root = if ($env:SSH_MAGIC_HOME) { [IO.Path]::GetFullPath($env:SSH_MAGIC_HOME) } else { Join-Path $env:LOCALAPPDATA 'ssh-magic' }
 $dir = Join-Path $root ('bin\'+$version)
@@ -33,7 +33,7 @@ $acquired = $false
 try {
  try { $acquired = $mutex.WaitOne(120000) } catch [Threading.AbandonedMutexException] { $acquired = $true }
  if (-not $acquired) { throw 'Another download is still running. Retry this command shortly.' }
- foreach ($item in @(@('ssh-magic.exe','ssh-magic-windows-amd64.exe','928a2e47fba123d8094644174f65ec2b66ccc12290c96a48459ad61583f59fba'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','a57a6279a36b0a1d1f42821bd20559d3ed31892a0b2b469e8e471a70ebd67648'))) {
+ foreach ($item in @(@('ssh-magic.exe','ssh-magic-windows-amd64.exe','4b6c9d021f4a2aac166a02b525bcedbc7340bdc2d1b6027f8fdedb12b3f60b03'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','a57a6279a36b0a1d1f42821bd20559d3ed31892a0b2b469e8e471a70ebd67648'))) {
   $dst = Join-Path $dir $item[0]
   if ((Test-Path -LiteralPath $dst) -and (FileHash $dst) -eq $item[2]) { continue }
   $tmp = Join-Path $dir ([guid]::NewGuid().ToString()+'.download')

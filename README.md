@@ -118,7 +118,7 @@ The host retains its SSH and Iroh secret keys in memory. The connector temporari
 
 Windows contains host descendants in a Job Object that terminates them when the host exits. Linux uses parent-death signals for helper processes and cancellable process groups for exec commands. Deliberately detached processes and software installed during assistance can persist: ending access does not undo the work you requested.
 
-Cached binaries remain under `%LOCALAPPDATA%\ssh-magic\bin\0.1.4` or `${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic/bin/0.1.4`. The state lives in the corresponding product cache root. Close connections, then run `ssh-magic remove` to delete the product cache. Windows uses a short-lived helper to remove its locked executable after exit. This helper is never registered for startup.
+Cached binaries remain under `%LOCALAPPDATA%\ssh-magic\bin\0.1.5` or `${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic/bin/0.1.5`. The state lives in the corresponding product cache root. Close connections, then run `ssh-magic remove` to delete the product cache. Windows uses a short-lived helper to remove its locked executable after exit. This helper is never registered for startup.
 
 ## How the internet connection works
 

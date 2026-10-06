@@ -160,6 +160,8 @@ try {
 }finally{Remove-Item -LiteralPath $p -Recurse -Force}`, psQuote(exe), psQuote(side), hash, sideHash)
 	encoded := encodedPS(script)
 	launch := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$p=Start-Process powershell.exe -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand',`+psQuote(encoded)+` -PassThru -Wait; exit $p.ExitCode`)
+	// Let Windows PowerShell build its own module path, including Get-FileHash.
+	launch.Env = append(os.Environ(), "PSModulePath=")
 	launch.Stdout = os.Stdout
 	launch.Stderr = os.Stderr
 	fmt.Println("Approve UAC. The assistance code appears in the elevated terminal.")
