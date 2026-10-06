@@ -20,7 +20,8 @@ func updateShellPath(root string, add bool) error {
 	if err != nil {
 		return err
 	}
-	line := "export PATH='" + strings.ReplaceAll(filepath.Join(root, "bin"), "'", "'\\''") + "':\"$PATH\" # ssh-magic\n"
+	bin := "'" + strings.ReplaceAll(filepath.Join(root, "bin"), "'", "'\\''") + "'"
+	line := "case \":$PATH:\" in *:" + bin + ":*) ;; *) export PATH=" + bin + ":\"$PATH\";; esac # ssh-magic\n"
 	for _, name := range []string{".profile", ".bashrc", ".bash_profile", ".bash_login", ".zshrc"} {
 		path := filepath.Join(home, name)
 		b, err := os.ReadFile(path)

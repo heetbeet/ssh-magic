@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,6 +31,20 @@ func TestShellInstallAndRemoval(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".bash_login")); !os.IsNotExist(err) {
 		t.Fatal("installer created a higher-priority startup file")
+	}
+	cmd := exec.Command("bash", "-c", `. "$HOME/.profile"; . "$HOME/.bashrc"; printf '%s' "$PATH"`)
+	result, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shell startup failed: %s", result)
+	}
+	count := 0
+	for _, path := range strings.Split(string(result), ":") {
+		if path == filepath.Join(root, "bin") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatal("login and interactive startup duplicated the PATH entry")
 	}
 	if err := uninstallPath(root); err != nil {
 		t.Fatal(err)

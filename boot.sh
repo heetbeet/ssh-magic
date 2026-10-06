@@ -5,7 +5,7 @@ set -euo pipefail
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || { echo 'This release supports Linux x64.' >&2; exit 1; }
 for tool in curl sha256sum flock; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
 umask 077
-version=0.1.5
+version=0.1.6
 base="https://github.com/heetbeet/ssh-magic/releases/download/v$version"
 root="${SSH_MAGIC_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic}"
 dir="$root/bin/$version"
@@ -22,7 +22,7 @@ fetch() {
  chmod 700 "$tmp"
  mv -f "$tmp" "$dest"
 }
-fetch ssh-magic ssh-magic-linux-amd64 'ff8f0af7679d12160aa943097af255616e25245432dc01a4df774556733fa3d9'
+fetch ssh-magic ssh-magic-linux-amd64 '17245acc0fb7d21e90a92b61c19585a570bdc9dc18b655fc167ee1650e959f93'
 fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
 fetch licenses.zip licenses.zip 'a57a6279a36b0a1d1f42821bd20559d3ed31892a0b2b469e8e471a70ebd67648'
 flock -u 9
