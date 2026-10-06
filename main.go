@@ -34,7 +34,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.1.6"
+const version = "0.1.7"
 const lifetime = 2 * time.Hour
 
 var endpointPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -72,6 +72,9 @@ func main() {
 	os.Exit(code)
 }
 func run(ctx context.Context, a []string) (int, error) {
+	if len(a) == 1 && a[0] == "__reap" {
+		return 0, reap()
+	}
 	if len(a) == 2 && a[0] == "proxy" {
 		if !endpointPattern.MatchString(a[1]) {
 			return 1, errors.New("invalid endpoint")
@@ -88,7 +91,10 @@ func run(ctx context.Context, a []string) (int, error) {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		return 0, cmd.Run()
+		if e = startChild(cmd); e != nil {
+			return 1, e
+		}
+		return 0, cmd.Wait()
 	}
 	if len(a) == 0 || a[0] == "--help" || a[0] == "help" {
 		fmt.Println(`SSH Magic ` + version + `
@@ -138,7 +144,8 @@ access expires two hours after open. No service, account, or firewall changes.`)
 		if len(a) != 1 {
 			return 1, errors.New("usage: ssh-magic install")
 		}
-		if runtime.GOOS == "windows" && elevated() {
+		// Elevated Windows and macOS processes would write administrator-owned files into the user's profile.
+		if runtime.GOOS != "linux" && elevated() {
 			return 1, errors.New("install from an ordinary terminal; administrator access uses ssh-magic open --admin")
 		}
 		return 0, installProduct(root)
@@ -343,6 +350,7 @@ func openHost(parent context.Context, root string) error {
 	if e = containHost(); e != nil {
 		return e
 	}
+	keepAwake()
 	ctx, cancel := context.WithTimeout(parent, lifetime)
 	defer cancel()
 	expiry := time.Now().Add(lifetime).UTC()
@@ -408,7 +416,7 @@ func openHost(parent context.Context, root string) error {
 		return e
 	}
 	cmd.Stderr = os.Stderr
-	if e = cmd.Start(); e != nil {
+	if e = startChild(cmd); e != nil {
 		return e
 	}
 	done := make(chan error, 1)
@@ -518,8 +526,11 @@ func openHost(parent context.Context, root string) error {
 	return nil
 }
 func validate(d invitation) error {
-	if d.Schema != "ssh-magic/1" || len(d.SessionID) != 32 || !endpointPattern.MatchString(d.Endpoint) || (d.OS != "windows" && d.OS != "linux") || (d.Privilege != "user" && d.Privilege != "admin") {
+	if d.Schema != "ssh-magic/1" || len(d.SessionID) != 32 || !endpointPattern.MatchString(d.Endpoint) || (d.Privilege != "user" && d.Privilege != "admin") {
 		return errors.New("invalid invitation")
+	}
+	if d.OS != "windows" && d.OS != "linux" && d.OS != "darwin" {
+		return fmt.Errorf("host OS %q needs a newer ssh-magic; update and ask for a new code", clean(d.OS))
 	}
 	if _, e := hex.DecodeString(d.SessionID); e != nil {
 		return errors.New("invalid session ID")
@@ -754,7 +765,7 @@ func startProxy(ctx context.Context, bin, id string) (*proxyConn, error) {
 		return nil, e
 	}
 	cmd.Stderr = os.Stderr
-	if e = cmd.Start(); e != nil {
+	if e = startChild(cmd); e != nil {
 		in.Close()
 		out.Close()
 		return nil, e

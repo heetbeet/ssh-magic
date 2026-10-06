@@ -1,0 +1,6 @@
+#!/bin/sh
+# The payload stays under /usr/local/lib/ssh-magic so the installer never changes
+# ownership of /usr/local/bin, which Homebrew on Intel Macs owns.
+set -e
+mkdir -p /usr/local/bin
+ln -sfn /usr/local/lib/ssh-magic/ssh-magic /usr/local/bin/ssh-magic

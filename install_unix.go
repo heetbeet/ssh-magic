@@ -1,9 +1,12 @@
+//go:build linux || darwin
+
 package main
 
 import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -22,7 +25,14 @@ func updateShellPath(root string, add bool) error {
 	}
 	bin := "'" + strings.ReplaceAll(filepath.Join(root, "bin"), "'", "'\\''") + "'"
 	line := "case \":$PATH:\" in *:" + bin + ":*) ;; *) export PATH=" + bin + ":\"$PATH\";; esac # ssh-magic\n"
-	for _, name := range []string{".profile", ".bashrc", ".bash_profile", ".bash_login", ".zshrc"} {
+	// The first `created` files are created when missing; the rest are only updated.
+	// macOS terminals start zsh login shells, which read .zprofile, not .profile;
+	// .profile still serves bash users without a .bash_profile or .bash_login.
+	files, created := []string{".profile", ".bashrc", ".bash_profile", ".bash_login", ".zshrc"}, 2
+	if runtime.GOOS == "darwin" {
+		files, created = []string{".zprofile", ".zshrc", ".profile", ".bash_profile", ".bash_login", ".bashrc"}, 3
+	}
+	for i, name := range files {
 		path := filepath.Join(home, name)
 		b, err := os.ReadFile(path)
 		if err != nil && !os.IsNotExist(err) {
@@ -32,7 +42,7 @@ func updateShellPath(root string, add bool) error {
 			continue
 		}
 		// Do not create a file that changes the shell's startup-file precedence.
-		if add && name != ".profile" && name != ".bashrc" && os.IsNotExist(err) {
+		if add && i >= created && os.IsNotExist(err) {
 			continue
 		}
 		updated := bytes.ReplaceAll(b, []byte(line), nil)
