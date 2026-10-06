@@ -47,6 +47,8 @@ wh close help
 
 Windows hosts execute commands with Windows PowerShell, `-NoProfile -NonInteractive -Command`. Linux hosts use Bash, `-lc`. stdout, stderr, stdin, and the remote exit status pass through. Each exec starts a fresh shell in the host user's home directory. To keep a working directory, include `cd` in the command. Paths for file transfers may contain spaces, Unicode, Windows drive letters, or Unix absolute paths. Transfers write a temporary sibling file and rename only after completing; a remote server without atomic overwrite support may reject an existing destination instead of replacing it.
 
+The built-in client checks SSH liveness every fifteen seconds, allowing ten seconds for a reply. A lost host therefore fails the current operation within about twenty-five seconds. It does not automatically retry remote commands, which might have already changed something.
+
 For an existing SSH client:
 
 ```text
@@ -101,5 +103,7 @@ go vet ./...
 Windows: `scripts/release.ps1` builds both architectures, downloads the pinned Iroh binaries, generates bootstraps with binary hashes, and writes `dist/SHA256SUMS`. Git and Cargo are required by release packaging to collect the Rust dependency license notices. Dependencies are pinned in go.mod/go.sum and Iroh SSH's Cargo.lock. Release license notices are supplied in `licenses.zip` and THIRD_PARTY.md, and the bootstrap caches the license archive alongside the binaries.
 
 `tests/e2e.cjs` exercises real public pairing and Iroh connectivity, repeated open/connect, command streams and exit status, binary SFTP round trips, native SSH, and revocation. Prepare `dist/wh.exe` and `dist/iroh-ssh.exe` on Windows, or `dist/wh` and `dist/iroh-ssh` on Linux, then run `node tests/e2e.cjs`. Run the Linux test as an ordinary user. Test outputs stay in ignored `docs/temp/`.
+
+`node tests/lifecycle.cjs` checks a healthy command across the keepalive interval, then forcibly terminates the host during another command and verifies that the client fails promptly.
 
 `WH_HOME` selects an isolated state/cache root for tests. Windows ignores it for elevated processes. ARM and macOS builds are not supplied. No remote-desktop GUI is included.
