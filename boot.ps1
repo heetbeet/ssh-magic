@@ -9,9 +9,9 @@ function FileHash($file) {
 }
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'This release supports Windows x64.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$version = '0.1.3'
-$base = 'https://github.com/heetbeet/ssh-wormhole/releases/download/v'+$version
-$root = if ($env:WH_HOME) { [IO.Path]::GetFullPath($env:WH_HOME) } else { Join-Path $env:LOCALAPPDATA 'ssh-wormhole' }
+$version = '0.1.4'
+$base = 'https://github.com/heetbeet/ssh-magic/releases/download/v'+$version
+$root = if ($env:SSH_MAGIC_HOME) { [IO.Path]::GetFullPath($env:SSH_MAGIC_HOME) } else { Join-Path $env:LOCALAPPDATA 'ssh-magic' }
 $dir = Join-Path $root ('bin\'+$version)
 New-Item -ItemType Directory -Force $dir | Out-Null
 # A user-only ACL, with inheritance disabled, also protects newly downloaded files.
@@ -27,13 +27,13 @@ if ($PSVersionTable.PSEdition -eq 'Core') {
 } else {
  [IO.Directory]::SetAccessControl($root,$acl)
 }
-$mutexName = 'Local\ssh-wormhole-'+([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($dir))).Replace('-',''))
+$mutexName = 'Local\ssh-magic-'+([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($dir))).Replace('-',''))
 $mutex = New-Object Threading.Mutex($false,$mutexName)
 $acquired = $false
 try {
  try { $acquired = $mutex.WaitOne(120000) } catch [Threading.AbandonedMutexException] { $acquired = $true }
  if (-not $acquired) { throw 'Another download is still running. Retry this command shortly.' }
- foreach ($item in @(@('wh.exe','wh-windows-amd64.exe','b94d585c7ce56c56d2ff9cf24df1a1130915dcffd37c18e6baa985e0541e5691'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','519b63cb5c6dee55eea1d4b32359008daf6d4735d2bfa1f0e36dcae3dc3972fb'))) {
+ foreach ($item in @(@('ssh-magic.exe','ssh-magic-windows-amd64.exe','928a2e47fba123d8094644174f65ec2b66ccc12290c96a48459ad61583f59fba'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','a57a6279a36b0a1d1f42821bd20559d3ed31892a0b2b469e8e471a70ebd67648'))) {
   $dst = Join-Path $dir $item[0]
   if ((Test-Path -LiteralPath $dst) -and (FileHash $dst) -eq $item[2]) { continue }
   $tmp = Join-Path $dir ([guid]::NewGuid().ToString()+'.download')
@@ -47,6 +47,6 @@ try {
   } finally { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force } }
  }
 } finally { if ($acquired) {$mutex.ReleaseMutex()}; $mutex.Dispose() }
-if ($args.Count -eq 0) { & (Join-Path $dir 'wh.exe') open } else { & (Join-Path $dir 'wh.exe') @args }
-if ($LASTEXITCODE -ne 0) { throw ('wh exited with code '+$LASTEXITCODE) }
+if ($args.Count -eq 0) { & (Join-Path $dir 'ssh-magic.exe') open } else { & (Join-Path $dir 'ssh-magic.exe') @args }
+if ($LASTEXITCODE -ne 0) { throw ('ssh-magic exited with code '+$LASTEXITCODE) }
 } @args

@@ -5,12 +5,12 @@ const crypto = require('crypto');
 
 const windows = process.platform === 'win32';
 const root = path.resolve(__dirname, '..');
-const bin = path.join(root, windows ? 'dist/wh.exe' : 'dist/wh');
+const bin = path.join(root, windows ? 'dist/ssh-magic.exe' : 'dist/ssh-magic');
 const test = path.join(root, 'docs/temp/e2e-' + Date.now());
 fs.mkdirSync(test, { recursive: true });
 const hostHome = path.join(test, 'host');
 const clientHome = path.join(test, 'client');
-const env = home => ({ ...process.env, WH_HOME: home });
+const env = home => ({ ...process.env, SSH_MAGIC_HOME: home });
 
 function run(args, home = clientHome) {
  const result = spawnSync(bin, args, { env: env(home), encoding: 'utf8', timeout: 90000 });

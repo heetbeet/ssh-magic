@@ -1,0 +1,43 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestShellInstallAndRemoval(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	root := filepath.Join(home, "a cache's folder")
+	original := "# user's settings\nexport EDITOR=vim\n"
+	for _, name := range []string{".profile", ".bashrc", ".bash_profile", ".zshrc"} {
+		if err := os.WriteFile(filepath.Join(home, name), []byte(original), 0640); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for range 2 {
+		if err := updateShellPath(root, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{".profile", ".bashrc", ".bash_profile", ".zshrc"} {
+		b, _ := os.ReadFile(filepath.Join(home, name))
+		if !strings.HasPrefix(string(b), original) || strings.Count(string(b), "# ssh-magic") != 1 {
+			t.Fatalf("installation damaged or duplicated settings: %s", b)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, ".bash_login")); !os.IsNotExist(err) {
+		t.Fatal("installer created a higher-priority startup file")
+	}
+	if err := uninstallPath(root); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".profile", ".bashrc", ".bash_profile", ".zshrc"} {
+		b, _ := os.ReadFile(filepath.Join(home, name))
+		if string(b) != original {
+			t.Fatalf("removal changed user settings: %s", b)
+		}
+	}
+}

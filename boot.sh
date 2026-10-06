@@ -5,9 +5,9 @@ set -euo pipefail
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || { echo 'This release supports Linux x64.' >&2; exit 1; }
 for tool in curl sha256sum flock; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
 umask 077
-version=0.1.3
-base="https://github.com/heetbeet/ssh-wormhole/releases/download/v$version"
-root="${WH_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-wormhole}"
+version=0.1.4
+base="https://github.com/heetbeet/ssh-magic/releases/download/v$version"
+root="${SSH_MAGIC_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic}"
 dir="$root/bin/$version"
 mkdir -p "$dir"
 chmod 700 "$root" "$dir"
@@ -22,13 +22,13 @@ fetch() {
  chmod 700 "$tmp"
  mv -f "$tmp" "$dest"
 }
-fetch wh wh-linux-amd64 '835a13fda8725c41e2f8a99132d90ddda7a2d5c5c953c3dd4d8fb61a7b2a47bb'
+fetch ssh-magic ssh-magic-linux-amd64 '703c0f7fcd42a8a4b1f41e4206ffb8bdb6b6c6bc9c2f7188373d470d8109291e'
 fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
-fetch licenses.zip licenses.zip '519b63cb5c6dee55eea1d4b32359008daf6d4735d2bfa1f0e36dcae3dc3972fb'
+fetch licenses.zip licenses.zip 'a57a6279a36b0a1d1f42821bd20559d3ed31892a0b2b469e8e471a70ebd67648'
 flock -u 9
 exec 9>&-
 if [[ $# == 0 ]]; then set -- open; fi
-if [[ ! -t 0 && -t 1 ]]; then exec "$dir/wh" "$@" < /dev/tty; fi
-exec "$dir/wh" "$@"
+if [[ ! -t 0 && -t 1 ]]; then exec "$dir/ssh-magic" "$@" < /dev/tty; fi
+exec "$dir/ssh-magic" "$@"
 }
 main "$@"

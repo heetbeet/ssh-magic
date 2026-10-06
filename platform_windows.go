@@ -25,7 +25,7 @@ func currentSID() (string, error) {
 	return u.User.Sid.String(), nil
 }
 func dataRoot() (string, error) {
-	if v := os.Getenv("WH_HOME"); v != "" && !elevated() {
+	if v := os.Getenv("SSH_MAGIC_HOME"); v != "" && !elevated() {
 		return filepath.Abs(v)
 	}
 	base := os.Getenv("LOCALAPPDATA")
@@ -34,7 +34,7 @@ func dataRoot() (string, error) {
 		if e != nil {
 			return "", e
 		}
-		adminRoot := filepath.Join(os.Getenv("ProgramData"), "ssh-wormhole-admin")
+		adminRoot := filepath.Join(os.Getenv("ProgramData"), "ssh-magic-admin")
 		if e = privateDir(adminRoot); e != nil {
 			return "", e
 		}
@@ -46,7 +46,7 @@ func dataRoot() (string, error) {
 	if base == "" {
 		return "", fmt.Errorf("local application directory unavailable")
 	}
-	return filepath.Join(base, "ssh-wormhole"), nil
+	return filepath.Join(base, "ssh-magic"), nil
 }
 func privateDir(path string) error {
 	if e := os.MkdirAll(path, 0700); e != nil {
@@ -88,7 +88,7 @@ func privateDir(path string) error {
 }
 
 // Holding the only job handle in this process makes Windows kill every member
-// when the host exits, including when the terminal is closed or wh is killed.
+// when the host exits, including when the terminal is closed or ssh-magic is killed.
 func containHost() error {
 	job, e := windows.CreateJobObject(nil, nil)
 	if e != nil {
@@ -145,7 +145,7 @@ func elevate() error {
 	// UAC launches a fixed PowerShell command, which copies to an administrator-
 	// protected directory and verifies the copied bytes before executing them.
 	script := fmt.Sprintf(`$ErrorActionPreference='Stop'
-$p=Join-Path $env:ProgramData ('ssh-wormhole-stage-'+[guid]::NewGuid())
+$p=Join-Path $env:ProgramData ('ssh-magic-stage-'+[guid]::NewGuid())
 New-Item -ItemType Directory $p|Out-Null
 try {
  $acl=New-Object System.Security.AccessControl.DirectorySecurity; $acl.SetAccessRuleProtection($true,$false)
@@ -153,10 +153,10 @@ try {
  $acl.SetOwner($admins)
  foreach($s in @('S-1-5-32-544','S-1-5-18')){$id=New-Object System.Security.Principal.SecurityIdentifier($s);$rule=New-Object System.Security.AccessControl.FileSystemAccessRule($id,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$acl.AddAccessRule($rule)}
  [IO.Directory]::SetAccessControl($p,$acl)
- Copy-Item -LiteralPath %s -Destination (Join-Path $p 'wh.exe')
+ Copy-Item -LiteralPath %s -Destination (Join-Path $p 'ssh-magic.exe')
  Copy-Item -LiteralPath %s -Destination (Join-Path $p 'iroh-ssh.exe')
- if((Get-FileHash (Join-Path $p 'wh.exe')).Hash -ne '%s' -or (Get-FileHash (Join-Path $p 'iroh-ssh.exe')).Hash -ne '%s'){throw 'Elevated staging checksum mismatch'}
- & (Join-Path $p 'wh.exe') open --admin
+ if((Get-FileHash (Join-Path $p 'ssh-magic.exe')).Hash -ne '%s' -or (Get-FileHash (Join-Path $p 'iroh-ssh.exe')).Hash -ne '%s'){throw 'Elevated staging checksum mismatch'}
+ & (Join-Path $p 'ssh-magic.exe') open --admin
 }finally{Remove-Item -LiteralPath $p -Recurse -Force}`, psQuote(exe), psQuote(side), hash, sideHash)
 	encoded := encodedPS(script)
 	launch := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", `$p=Start-Process powershell.exe -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand',`+psQuote(encoded)+` -PassThru -Wait; exit $p.ExitCode`)
@@ -185,6 +185,6 @@ func removeProduct(root string) error {
 	if e = cmd.Start(); e != nil {
 		return e
 	}
-	fmt.Println("Removal will finish after wh exits.")
+	fmt.Println("Removal will finish after ssh-magic exits.")
 	return nil
 }

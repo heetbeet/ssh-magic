@@ -34,7 +34,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.1.3"
+const version = "0.1.4"
 const lifetime = 2 * time.Hour
 
 var endpointPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -64,7 +64,7 @@ func main() {
 	defer stop()
 	code, err := run(ctx, os.Args[1:])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "wh:", err)
+		fmt.Fprintln(os.Stderr, "ssh-magic:", err)
 		if code == 0 {
 			code = 1
 		}
@@ -91,17 +91,18 @@ func run(ctx context.Context, a []string) (int, error) {
 		return 0, cmd.Run()
 	}
 	if len(a) == 0 || a[0] == "--help" || a[0] == "help" {
-		fmt.Println(`SSH Wormhole ` + version + `
-wh open [--admin]           Offer temporary access; keep this terminal open
-wh connect [CODE]          Redeem the four-word code and save connection 'help'
-wh exec help -- COMMAND    Run a command using the remote shell
-wh put help LOCAL REMOTE   Upload a file
-wh get help REMOTE LOCAL   Download a file
-wh close help              Revoke remote access and erase local credentials
-wh forget help             Erase local credentials without closing the host
-wh status                  Show local sessions
-wh remove                  Remove local credentials and cached downloads
-wh version                 Print version
+		fmt.Println(`SSH Magic ` + version + `
+ssh-magic open [--admin]           Offer temporary access; keep this terminal open
+ssh-magic connect [CODE]          Redeem the four-word code and save connection 'help'
+ssh-magic exec help -- COMMAND    Run a command using the remote shell
+ssh-magic put help LOCAL REMOTE   Upload a file
+ssh-magic get help REMOTE LOCAL   Download a file
+ssh-magic close help              Revoke remote access and erase local credentials
+ssh-magic forget help             Erase local credentials without closing the host
+ssh-magic status                  Show local sessions
+ssh-magic install                 Add ssh-magic to your user PATH, without starting access
+ssh-magic remove                  Remove the PATH entry, credentials, and downloads
+ssh-magic version                 Print version
 Ctrl+C or closing the host terminal ends access. Pairing expires in 10 minutes;
 access expires two hours after open. No service, account, or firewall changes.`)
 		return 0, nil
@@ -111,10 +112,10 @@ access expires two hours after open. No service, account, or firewall changes.`)
 		return 0, nil
 	}
 	if a[0] == "open" && len(a) > 2 {
-		return 1, errors.New("usage: wh open [--admin]")
+		return 1, errors.New("usage: ssh-magic open [--admin]")
 	}
 	if a[0] == "open" && len(a) == 2 && a[1] != "--admin" {
-		return 1, errors.New("usage: wh open [--admin]")
+		return 1, errors.New("usage: ssh-magic open [--admin]")
 	}
 	if a[0] == "open" {
 		admin := len(a) == 2
@@ -133,6 +134,14 @@ access expires two hours after open. No service, account, or firewall changes.`)
 		return 1, err
 	}
 	switch a[0] {
+	case "install":
+		if len(a) != 1 {
+			return 1, errors.New("usage: ssh-magic install")
+		}
+		if runtime.GOOS == "windows" && elevated() {
+			return 1, errors.New("install from an ordinary terminal; administrator access uses ssh-magic open --admin")
+		}
+		return 0, installProduct(root)
 	case "open":
 		return 0, openHost(ctx, root)
 	case "connect":
@@ -140,7 +149,7 @@ access expires two hours after open. No service, account, or firewall changes.`)
 			return 1, e
 		}
 		if len(a) > 2 {
-			return 1, errors.New("usage: wh connect [CODE]")
+			return 1, errors.New("usage: ssh-magic connect [CODE]")
 		}
 		code := ""
 		if len(a) == 2 {
@@ -190,10 +199,13 @@ access expires two hours after open. No service, account, or firewall changes.`)
 			return 1, errors.New("close the local host terminal before removing")
 		}
 		lock.Unlock()
+		if e = uninstallPath(root); e != nil {
+			return 1, e
+		}
 		return 0, removeProduct(root)
 	}
 	if len(a) < 2 || a[1] != "help" {
-		return 1, errors.New("expected connection name 'help'; run wh --help")
+		return 1, errors.New("expected connection name 'help'; run ssh-magic --help")
 	}
 	if a[0] != "forget" {
 		if e := containHost(); e != nil {
@@ -202,7 +214,7 @@ access expires two hours after open. No service, account, or firewall changes.`)
 	}
 	if a[0] == "forget" {
 		if len(a) != 2 {
-			return 1, errors.New("usage: wh forget help")
+			return 1, errors.New("usage: ssh-magic forget help")
 		}
 		return 0, os.RemoveAll(filepath.Join(root, "help"))
 	}
@@ -212,14 +224,14 @@ access expires two hours after open. No service, account, or firewall changes.`)
 	}
 	if a[0] == "exec" {
 		if len(a) != 4 || a[2] != "--" {
-			return 1, errors.New("usage: wh exec help -- 'remote command'")
+			return 1, errors.New("usage: ssh-magic exec help -- 'remote command'")
 		}
 	}
 	if (a[0] == "put" || a[0] == "get") && len(a) != 4 {
-		return 1, errors.New("usage: wh put|get help SOURCE DESTINATION")
+		return 1, errors.New("usage: ssh-magic put|get help SOURCE DESTINATION")
 	}
 	if a[0] != "exec" && a[0] != "put" && a[0] != "get" && a[0] != "close" {
-		return 1, errors.New("unknown command; run wh --help")
+		return 1, errors.New("unknown command; run ssh-magic --help")
 	}
 	c, e := dial(ctx, d)
 	if e != nil {
@@ -245,7 +257,7 @@ access expires two hours after open. No service, account, or firewall changes.`)
 	case "put", "get":
 		return 0, transfer(c, a[0], a[2], a[3], d.OS)
 	case "close":
-		ok, _, e := c.SendRequest("close@ssh-wormhole", true, nil)
+		ok, _, e := c.SendRequest("close@ssh-magic", true, nil)
 		if e != nil {
 			return 1, fmt.Errorf("close unconfirmed, credentials retained: %w", e)
 		}
@@ -262,7 +274,7 @@ access expires two hours after open. No service, account, or firewall changes.`)
 	return 0, nil
 }
 func pairClient() *wormhole.Client {
-	return &wormhole.Client{AppID: "io.github.heetbeet.ssh-wormhole/v1", PassPhraseComponentLength: 4, RendezvousURL: "wss://relay.magic-wormhole.io/v1"}
+	return &wormhole.Client{AppID: "io.github.heetbeet.ssh-magic/v1", PassPhraseComponentLength: 4, RendezvousURL: "wss://relay.magic-wormhole.io/v1"}
 }
 func key() (ssh.Signer, []byte, error) {
 	_, priv, e := ed25519.GenerateKey(rand.Reader)
@@ -374,7 +386,7 @@ func openHost(parent context.Context, root string) error {
 			default:
 			}
 		},
-		GlobalRequestHandlers: map[string]xssh.GlobalRequestHandler{"close@ssh-wormhole": func(c xssh.Conn, r *xssh.Request) error {
+		GlobalRequestHandlers: map[string]xssh.GlobalRequestHandler{"close@ssh-magic": func(c xssh.Conn, r *xssh.Request) error {
 			e := r.Reply(true, nil)
 			go func() { time.Sleep(250 * time.Millisecond); cancel() }()
 			return e
@@ -444,7 +456,7 @@ func openHost(parent context.Context, root string) error {
 	if elevated() {
 		privilege = "admin"
 	}
-	d := invitation{Schema: "wh/1", SessionID: hex.EncodeToString(sid), Endpoint: endpoint, HostKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host.PublicKey()))), ClientKey: string(cpem), OS: runtime.GOOS, Host: clean(hostname), User: clean(username), Privilege: privilege, Expires: expiry}
+	d := invitation{Schema: "ssh-magic/1", SessionID: hex.EncodeToString(sid), Endpoint: endpoint, HostKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host.PublicKey()))), ClientKey: string(cpem), OS: runtime.GOOS, Host: clean(hostname), User: clean(username), Privilege: privilege, Expires: expiry}
 	payload, e := json.Marshal(d)
 	if e != nil {
 		return e
@@ -506,7 +518,7 @@ func openHost(parent context.Context, root string) error {
 	return nil
 }
 func validate(d invitation) error {
-	if d.Schema != "wh/1" || len(d.SessionID) != 32 || !endpointPattern.MatchString(d.Endpoint) || (d.OS != "windows" && d.OS != "linux") || (d.Privilege != "user" && d.Privilege != "admin") {
+	if d.Schema != "ssh-magic/1" || len(d.SessionID) != 32 || !endpointPattern.MatchString(d.Endpoint) || (d.OS != "windows" && d.OS != "linux") || (d.Privilege != "user" && d.Privilege != "admin") {
 		return errors.New("invalid invitation")
 	}
 	if _, e := hex.DecodeString(d.SessionID); e != nil {
@@ -529,7 +541,7 @@ func loadInvitation(root string) (invitation, error) {
 	var d invitation
 	b, e := os.ReadFile(filepath.Join(root, "help", "session.json"))
 	if e != nil {
-		return d, errors.New("no saved connection; run wh connect CODE")
+		return d, errors.New("no saved connection; run ssh-magic connect CODE")
 	}
 	if len(b) > 8192 {
 		return d, errors.New("saved invitation too large")
@@ -572,7 +584,7 @@ func connect(ctx context.Context, root, code string) error {
 		return nil
 	}
 	if _, e = os.Stat(filepath.Join(root, "help", "session.json")); e == nil {
-		return errors.New("invalid saved credentials; use wh forget help before pairing again")
+		return errors.New("invalid saved credentials; use ssh-magic forget help before pairing again")
 	}
 	pairCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
@@ -813,7 +825,7 @@ func transfer(c *ssh.Client, direction, src, dst, hostOS string) error {
 		if _, e = rand.Read(nonce); e != nil {
 			return e
 		}
-		tmp := dst + ".wh-" + hex.EncodeToString(nonce)
+		tmp := dst + ".ssh-magic-" + hex.EncodeToString(nonce)
 		remote, e := sc.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL)
 		if e != nil {
 			return e
@@ -837,7 +849,7 @@ func transfer(c *ssh.Client, direction, src, dst, hostOS string) error {
 		return e
 	}
 	defer f.Close()
-	tmp, e := os.CreateTemp(filepath.Dir(dst), ".wh-*")
+	tmp, e := os.CreateTemp(filepath.Dir(dst), ".ssh-magic-*")
 	if e != nil {
 		return e
 	}

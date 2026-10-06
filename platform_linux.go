@@ -17,7 +17,7 @@ func interruptSignals() []os.Signal {
 }
 func elevated() bool { return os.Geteuid() == 0 }
 func dataRoot() (string, error) {
-	if v := os.Getenv("WH_HOME"); v != "" {
+	if v := os.Getenv("SSH_MAGIC_HOME"); v != "" {
 		return filepath.Abs(v)
 	}
 	home, e := os.UserHomeDir()
@@ -28,7 +28,7 @@ func dataRoot() (string, error) {
 	if base == "" {
 		base = filepath.Join(home, ".cache")
 	}
-	return filepath.Join(base, "ssh-wormhole"), nil
+	return filepath.Join(base, "ssh-magic"), nil
 }
 func privateDir(path string) error {
 	if e := os.MkdirAll(path, 0700); e != nil {
@@ -84,8 +84,8 @@ func elevate() error {
 		return e
 	}
 	sideHash := fmt.Sprintf("%x", sha256.Sum256(b))
-	script := `set -eu; umask 077; p=$(mktemp -d /tmp/ssh-wormhole-admin.XXXXXX); trap 'rm -rf -- "$p"' EXIT; cp -- "$1" "$p/wh"; cp -- "$2" "$p/iroh-ssh"; printf '%s  %s\n' "$3" "$p/wh" "$4" "$p/iroh-ssh" | sha256sum -c --status; chmod 700 "$p/wh" "$p/iroh-ssh"; unset WH_HOME XDG_CACHE_HOME; export HOME=/root; "$p/wh" open --admin`
-	cmd := exec.Command("sudo", "--", "bash", "-c", script, "wh-admin", exe, side, hash, sideHash)
+	script := `set -eu; umask 077; p=$(mktemp -d /tmp/ssh-magic-admin.XXXXXX); trap 'rm -rf -- "$p"' EXIT; cp -- "$1" "$p/ssh-magic"; cp -- "$2" "$p/iroh-ssh"; printf '%s  %s\n' "$3" "$p/ssh-magic" "$4" "$p/iroh-ssh" | sha256sum -c --status; chmod 700 "$p/ssh-magic" "$p/iroh-ssh"; unset SSH_MAGIC_HOME XDG_CACHE_HOME; export HOME=/root; "$p/ssh-magic" open --admin`
+	cmd := exec.Command("sudo", "--", "bash", "-c", script, "ssh-magic-admin", exe, side, hash, sideHash)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

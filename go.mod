@@ -1,4 +1,4 @@
-module github.com/heetbeet/ssh-wormhole
+module github.com/heetbeet/ssh-magic
 
 go 1.26.5
 

@@ -122,7 +122,7 @@ func TestSSHCommandAndFiles(t *testing.T) {
 func TestInvitationRejectsExpiredAndInvalidEndpoint(t *testing.T) {
 	host, _, _ := key()
 	_, cpem, _ := key()
-	d := invitation{Schema: "wh/1", SessionID: strings.Repeat("a", 32), Endpoint: strings.Repeat("b", 64), HostKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host.PublicKey()))), ClientKey: string(cpem), OS: "linux", Privilege: "user", Expires: time.Now().Add(time.Hour)}
+	d := invitation{Schema: "ssh-magic/1", SessionID: strings.Repeat("a", 32), Endpoint: strings.Repeat("b", 64), HostKey: strings.TrimSpace(string(ssh.MarshalAuthorizedKey(host.PublicKey()))), ClientKey: string(cpem), OS: "linux", Privilege: "user", Expires: time.Now().Add(time.Hour)}
 	if e := validate(d); e != nil {
 		t.Fatal(e)
 	}
