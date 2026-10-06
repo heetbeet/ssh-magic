@@ -1,5 +1,12 @@
+& {
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+function FileHash($file) {
+ $stream = [IO.File]::OpenRead($file)
+ $sha = [Security.Cryptography.SHA256]::Create()
+ try { [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','') }
+ finally { $sha.Dispose(); $stream.Dispose() }
+}
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'This release supports Windows x64.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $version = '0.1.3'
@@ -28,17 +35,18 @@ try {
  if (-not $acquired) { throw 'Another download is still running. Retry this command shortly.' }
  foreach ($item in @(@('wh.exe','wh-windows-amd64.exe','b94d585c7ce56c56d2ff9cf24df1a1130915dcffd37c18e6baa985e0541e5691'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','519b63cb5c6dee55eea1d4b32359008daf6d4735d2bfa1f0e36dcae3dc3972fb'))) {
   $dst = Join-Path $dir $item[0]
-  if ((Test-Path -LiteralPath $dst) -and (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash -eq $item[2]) { continue }
+  if ((Test-Path -LiteralPath $dst) -and (FileHash $dst) -eq $item[2]) { continue }
   $tmp = Join-Path $dir ([guid]::NewGuid().ToString()+'.download')
   try {
    for ($attempt=1; $attempt -le 3; $attempt++) {
     try { Invoke-WebRequest -UseBasicParsing ($base+'/'+$item[1]) -OutFile $tmp; break }
     catch { if ($attempt -eq 3) { throw }; Start-Sleep -Seconds $attempt }
    }
-   if ((Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash -ne $item[2]) { throw ('Checksum mismatch: '+$item[1]) }
+   if ((FileHash $tmp) -ne $item[2]) { throw ('Checksum mismatch: '+$item[1]) }
    Move-Item -LiteralPath $tmp -Destination $dst -Force
   } finally { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force } }
  }
 } finally { if ($acquired) {$mutex.ReleaseMutex()}; $mutex.Dispose() }
 if ($args.Count -eq 0) { & (Join-Path $dir 'wh.exe') open } else { & (Join-Path $dir 'wh.exe') @args }
 if ($LASTEXITCODE -ne 0) { throw ('wh exited with code '+$LASTEXITCODE) }
+} @args
