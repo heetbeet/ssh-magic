@@ -6,34 +6,46 @@ Windows 10/11 x64 and Linux x64. No account registration or router configuration
 
 ## Open the computer being helped
 
-Windows, from PowerShell or a Windows Run dialog:
+Windows, from PowerShell, cmd, or the Run dialog:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=3072; & ([scriptblock]::Create((Invoke-RestMethod -UserAgent 'ssh-wormhole-bootstrap' 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.3/bootstrap.ps1?download=1'))) open"
+powershell -nop -c "irm https://heetbeet.github.io/ssh-wormhole/boot.ps1|iex"
 ```
 
 Linux:
 
 ```bash
-bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.3/bootstrap.sh -o "$s" && bash "$s" open'
+curl -fsSL https://heetbeet.github.io/ssh-wormhole/boot.sh | bash
 ```
 
 Read back the line starting with `CODE:`. Keep that terminal open. Only share the code with the person or agent you want to give access to.
 
-For administrator access, append `--admin` to `open` inside the command. Windows asks for UAC approval and displays the code in the elevated terminal. Linux asks through sudo. An already elevated terminal must use `open --admin` explicitly. User access runs with the opening user's permissions and reaches their accessible files; it is not a filesystem sandbox.
+Already in PowerShell? The shortest opening command is `irm https://heetbeet.github.io/ssh-wormhole/boot.ps1|iex`. The outer `powershell -nop -c "..."` makes the same command work from cmd and the Run dialog too. No temp-path expansion or permanent execution-policy change is needed.
+
+For administrator access:
+
+```powershell
+powershell -nop -c "iex ('&{'+(irm https://heetbeet.github.io/ssh-wormhole/boot.ps1)+'} open --admin')"
+```
+
+```bash
+curl -fsSL https://heetbeet.github.io/ssh-wormhole/boot.sh | bash -s -- open --admin
+```
+
+Windows asks for UAC approval and displays the code in the elevated terminal. Linux asks through sudo. An already elevated terminal must use `open --admin` explicitly. User access runs with the opening user's permissions and reaches their accessible files; it is not a filesystem sandbox.
 
 ## Connect from the operator or agent computer
 
 Windows, replace `CODE` with the received code:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=3072; & ([scriptblock]::Create((Invoke-RestMethod -UserAgent 'ssh-wormhole-bootstrap' 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.3/bootstrap.ps1?download=1'))) connect CODE"
+powershell -nop -c "iex ('&{'+(irm https://heetbeet.github.io/ssh-wormhole/boot.ps1)+'} connect CODE')"
 ```
 
 Linux:
 
 ```bash
-bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.3/bootstrap.sh -o "$s" && bash "$s" connect CODE'
+curl -fsSL https://heetbeet.github.io/ssh-wormhole/boot.sh | bash -s -- connect CODE
 ```
 
 The connector prints the absolute path of `wh` and a session-specific SSH configuration. Give those paths to your agent. No installed SSH client is needed for the built-in commands. Run the Windows executable with PowerShell's `&` operator if its path is quoted.
@@ -69,6 +81,8 @@ scp -F /absolute/path/printed/ssh_config local-file help:remote-file
 
 The bootstrap verifies cached files and repairs missing or corrupt downloads. It does not overwrite a healthy cached install. Repeating `open` shows the existing waiting code or session status and does not restart the host. A saved `help` connection cannot silently be replaced by a different code. `connect` without a code prompts without echo on a terminal, keeping the code out of command history.
 
+Both bootstraps live at the repository root on `master`. GitHub Pages serves those same files at the short URLs above. If Pages is blocked, substitute `https://raw.githubusercontent.com/heetbeet/ssh-wormhole/master/boot.ps1` or `https://raw.githubusercontent.com/heetbeet/ssh-wormhole/master/boot.sh`. There is no separate installer service or URL shortener. Repeat the same command for a retry.
+
 ## Lifetime and cleanup
 
 Pairing expires after ten minutes. SSH must authenticate within two minutes of redemption. Access ends two hours after opening, even if actively used. A new session requires a new `open` command.
@@ -89,7 +103,7 @@ Cached binaries remain under `%LOCALAPPDATA%\ssh-wormhole\bin\0.1.3` or `${XDG_C
 
 The public services can observe connection metadata, but cannot decrypt the pairing payload or SSH command/file contents. Availability depends on those services and the local network allowing outbound traffic. Restrictive proxies or firewalls can still block a session. This release does not operate its own relay infrastructure or promise a relay SLA.
 
-The bootstrap trusts GitHub HTTPS for the pinned script and its embedded SHA256 values; this does not provide protection if the publisher account itself is compromised. Both component binaries are verified before installation, and the Iroh binary is verified again before every launch. Administrator elevation copies verified binaries into a protected temporary directory before executing them. Release binaries are currently unsigned; platform reputation checks may warn.
+The bootstrap trusts GitHub HTTPS for the current script and its embedded SHA256 values; this does not provide protection if the publisher account itself is compromised. Both component binaries are verified before installation, and the Iroh binary is verified again before every launch. Administrator elevation copies verified binaries into a protected temporary directory before executing them. Release binaries are currently unsigned; platform reputation checks may warn.
 
 ## Build and test
 
@@ -100,7 +114,7 @@ go test ./...
 go vet ./...
 ```
 
-Windows: `scripts/release.ps1` builds both architectures, downloads the pinned Iroh binaries, generates bootstraps with binary hashes, and writes `dist/SHA256SUMS`. Git and Cargo are required by release packaging to collect the Rust dependency license notices. Dependencies are pinned in go.mod/go.sum and Iroh SSH's Cargo.lock. Release license notices are supplied in `licenses.zip` and THIRD_PARTY.md, and the bootstrap caches the license archive alongside the binaries.
+Windows: `scripts/release.ps1` builds both architectures, downloads the pinned Iroh binaries, generates root bootstraps and release copies with binary hashes, and writes `dist/SHA256SUMS`. Commit the generated `boot.ps1` and `boot.sh` to `master` when publishing a release. GitHub Pages publishes from `master` at `/`. Git and Cargo are required by release packaging to collect the Rust dependency license notices. Dependencies are pinned in go.mod/go.sum and Iroh SSH's Cargo.lock. Release license notices are supplied in `licenses.zip` and THIRD_PARTY.md, and the bootstrap caches the license archive alongside the binaries.
 
 `tests/e2e.cjs` exercises real public pairing and Iroh connectivity, repeated open/connect, command streams and exit status, binary SFTP round trips, native SSH, and revocation. Prepare `dist/wh.exe` and `dist/iroh-ssh.exe` on Windows, or `dist/wh` and `dist/iroh-ssh` on Linux, then run `node tests/e2e.cjs`. Run the Linux test as an ordinary user. Test outputs stay in ignored `docs/temp/`.
 

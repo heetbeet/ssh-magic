@@ -22,9 +22,9 @@ fetch() {
  chmod 700 "$tmp"
  mv -f "$tmp" "$dest"
 }
-fetch wh wh-linux-amd64 '@LINUX_WH_SHA@'
+fetch wh wh-linux-amd64 '835a13fda8725c41e2f8a99132d90ddda7a2d5c5c953c3dd4d8fb61a7b2a47bb'
 fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
-fetch licenses.zip licenses.zip '@LICENSE_SHA@'
+fetch licenses.zip licenses.zip '519b63cb5c6dee55eea1d4b32359008daf6d4735d2bfa1f0e36dcae3dc3972fb'
 flock -u 9
 exec 9>&-
 if [[ $# == 0 ]]; then set -- open; fi
