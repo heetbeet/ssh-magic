@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || { echo 'This release supports Linux x64.' >&2; exit 1; }
+for tool in curl sha256sum flock; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
+umask 077
+version=0.1.0
+base="https://github.com/heetbeet/ssh-wormhole/releases/download/v$version"
+root="${WH_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-wormhole}"
+dir="$root/bin/$version"
+mkdir -p "$dir"
+chmod 700 "$root" "$dir"
+exec 9>"$root/install.lock"
+flock -w 120 9 || { echo 'Another download is still running. Retry shortly.' >&2; exit 1; }
+fetch() {
+ local dest="$dir/$1" asset="$2" hash="$3" tmp
+ if [[ -f "$dest" ]] && echo "$hash  $dest" | sha256sum -c --status; then return; fi
+ tmp=$(mktemp "$dir/.download.XXXXXX")
+ if ! curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 "$base/$asset" -o "$tmp"; then rm -f "$tmp"; return 1; fi
+ if ! echo "$hash  $tmp" | sha256sum -c --status; then rm -f "$tmp"; echo "Checksum mismatch: $asset" >&2; return 1; fi
+ chmod 700 "$tmp"
+ mv -f "$tmp" "$dest"
+}
+fetch wh wh-linux-amd64 '@LINUX_WH_SHA@'
+fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
+flock -u 9
+exec 9>&-
+if [[ $# == 0 ]]; then set -- open; fi
+exec "$dir/wh" "$@"
