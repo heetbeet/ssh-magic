@@ -9,13 +9,13 @@ Windows 10/11 x64 and Linux x64. No account registration or router configuration
 Windows, from PowerShell or a Windows Run dialog:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.1/bootstrap.ps1'))) open"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=3072; & ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.2/bootstrap.ps1'))) open"
 ```
 
 Linux:
 
 ```bash
-bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.1/bootstrap.sh -o "$s" && bash "$s" open'
+bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.2/bootstrap.sh -o "$s" && bash "$s" open'
 ```
 
 Read back the line starting with `CODE:`. Keep that terminal open. Only share the code with the person or agent you want to give access to.
@@ -27,13 +27,13 @@ For administrator access, append `--admin` to `open` inside the command. Windows
 Windows, replace `CODE` with the received code:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.1/bootstrap.ps1'))) connect CODE"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=3072; & ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.2/bootstrap.ps1'))) connect CODE"
 ```
 
 Linux:
 
 ```bash
-bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.1/bootstrap.sh -o "$s" && bash "$s" connect CODE'
+bash -c 's=$(mktemp); trap "rm -f -- \"$s\"" EXIT; curl -fL --retry 3 https://github.com/heetbeet/ssh-wormhole/releases/download/v0.1.2/bootstrap.sh -o "$s" && bash "$s" connect CODE'
 ```
 
 The connector prints the absolute path of `wh` and a session-specific SSH configuration. Give those paths to your agent. No installed SSH client is needed for the built-in commands. Run the Windows executable with PowerShell's `&` operator if its path is quoted.
@@ -77,7 +77,7 @@ The host retains its SSH and Iroh secret keys in memory. The connector temporari
 
 Windows contains host descendants in a Job Object that terminates them when the host exits. Linux uses parent-death signals for helper processes and cancellable process groups for exec commands. Deliberately detached processes and software installed during assistance can persist: ending access does not undo the work you requested.
 
-Cached binaries remain under `%LOCALAPPDATA%\ssh-wormhole\bin\0.1.1` or `${XDG_CACHE_HOME:-$HOME/.cache}/ssh-wormhole/bin/0.1.1`. The state lives in the corresponding product cache root. Close connections, then run `wh remove` to delete the product cache. Windows uses a short-lived helper to remove its locked executable after exit. This helper is never registered for startup.
+Cached binaries remain under `%LOCALAPPDATA%\ssh-wormhole\bin\0.1.2` or `${XDG_CACHE_HOME:-$HOME/.cache}/ssh-wormhole/bin/0.1.2`. The state lives in the corresponding product cache root. Close connections, then run `wh remove` to delete the product cache. Windows uses a short-lived helper to remove its locked executable after exit. This helper is never registered for startup.
 
 ## How the internet connection works
 

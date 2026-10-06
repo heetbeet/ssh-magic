@@ -152,7 +152,7 @@ try {
  $admins=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
  $acl.SetOwner($admins)
  foreach($s in @('S-1-5-32-544','S-1-5-18')){$id=New-Object System.Security.Principal.SecurityIdentifier($s);$rule=New-Object System.Security.AccessControl.FileSystemAccessRule($id,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$acl.AddAccessRule($rule)}
- Set-Acl $p $acl
+ [IO.Directory]::SetAccessControl($p,$acl)
  Copy-Item -LiteralPath %s -Destination (Join-Path $p 'wh.exe')
  Copy-Item -LiteralPath %s -Destination (Join-Path $p 'iroh-ssh.exe')
  if((Get-FileHash (Join-Path $p 'wh.exe')).Hash -ne '%s' -or (Get-FileHash (Join-Path $p 'iroh-ssh.exe')).Hash -ne '%s'){throw 'Elevated staging checksum mismatch'}

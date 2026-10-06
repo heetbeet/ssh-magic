@@ -3,7 +3,7 @@ set -euo pipefail
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || { echo 'This release supports Linux x64.' >&2; exit 1; }
 for tool in curl sha256sum flock; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
 umask 077
-version=0.1.1
+version=0.1.2
 base="https://github.com/heetbeet/ssh-wormhole/releases/download/v$version"
 root="${WH_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-wormhole}"
 dir="$root/bin/$version"
