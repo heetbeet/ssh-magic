@@ -22,7 +22,7 @@ $acquired = $false
 try {
  try { $acquired = $mutex.WaitOne(120000) } catch [Threading.AbandonedMutexException] { $acquired = $true }
  if (-not $acquired) { throw 'Another download is still running. Retry this command shortly.' }
- foreach ($item in @(@('wh.exe','wh-windows-amd64.exe','@WINDOWS_WH_SHA@'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'))) {
+ foreach ($item in @(@('wh.exe','wh-windows-amd64.exe','@WINDOWS_WH_SHA@'),@('iroh-ssh.exe','iroh-ssh-windows-amd64.exe','d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64'),@('licenses.zip','licenses.zip','@LICENSE_SHA@'))) {
   $dst = Join-Path $dir $item[0]
   if ((Test-Path -LiteralPath $dst) -and (Get-FileHash -LiteralPath $dst -Algorithm SHA256).Hash -eq $item[2]) { continue }
   $tmp = Join-Path $dir ([guid]::NewGuid().ToString()+'.download')

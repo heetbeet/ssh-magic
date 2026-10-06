@@ -67,6 +67,7 @@ func commandHandler(ctx context.Context, _ net.Addr) (xssh.ExecHandler, io.Close
 		cmd.Stdout = sess.Channel
 		cmd.Stderr = sess.Channel.Stderr()
 		e := cmd.Run()
+		finishCommand(cmd)
 		status := uint32(0)
 		if e != nil {
 			status = 1

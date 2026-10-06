@@ -98,7 +98,7 @@ go test ./...
 go vet ./...
 ```
 
-Windows: `scripts/release.ps1` builds both architectures, downloads the pinned Iroh binaries, generates bootstraps with binary hashes, and writes `dist/SHA256SUMS`. Dependencies are pinned in go.mod/go.sum. Release license notices are supplied in `licenses.zip` and THIRD_PARTY.md.
+Windows: `scripts/release.ps1` builds both architectures, downloads the pinned Iroh binaries, generates bootstraps with binary hashes, and writes `dist/SHA256SUMS`. Git and Cargo are required by release packaging to collect the Rust dependency license notices. Dependencies are pinned in go.mod/go.sum and Iroh SSH's Cargo.lock. Release license notices are supplied in `licenses.zip` and THIRD_PARTY.md, and the bootstrap caches the license archive alongside the binaries.
 
 `tests/e2e.cjs` exercises real public pairing and Iroh connectivity, repeated open/connect, command streams and exit status, binary SFTP round trips, native SSH, and revocation. Prepare `dist/wh.exe` and `dist/iroh-ssh.exe` on Windows, or `dist/wh` and `dist/iroh-ssh` on Linux, then run `node tests/e2e.cjs`. Run the Linux test as an ordinary user. Test outputs stay in ignored `docs/temp/`.
 

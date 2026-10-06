@@ -22,6 +22,7 @@ fetch() {
 }
 fetch wh wh-linux-amd64 '@LINUX_WH_SHA@'
 fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
+fetch licenses.zip licenses.zip '@LICENSE_SHA@'
 flock -u 9
 exec 9>&-
 if [[ $# == 0 ]]; then set -- open; fi

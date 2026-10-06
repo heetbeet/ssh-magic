@@ -16,10 +16,12 @@ try {
  }
  $winHash=(Get-FileHash dist/wh-windows-amd64.exe).Hash.ToLower()
  $linuxHash=(Get-FileHash dist/wh-linux-amd64).Hash.ToLower()
- [IO.File]::WriteAllText((Join-Path $PWD 'dist/bootstrap.ps1'),(Get-Content scripts/bootstrap.ps1.in -Raw).Replace('@WINDOWS_WH_SHA@',$winHash),[Text.UTF8Encoding]::new($false))
- [IO.File]::WriteAllText((Join-Path $PWD 'dist/bootstrap.sh'),(Get-Content scripts/bootstrap.sh.in -Raw).Replace('@LINUX_WH_SHA@',$linuxHash).Replace("`r`n","`n"),[Text.UTF8Encoding]::new($false))
- $assets=@('wh-windows-amd64.exe','wh-linux-amd64','iroh-ssh-windows-amd64.exe','iroh-ssh-linux-amd64','bootstrap.ps1','bootstrap.sh')
+ & scripts/licenses.ps1 -Go $go
+ $licenseHash=(Get-FileHash dist/licenses.zip).Hash.ToLower()
+ [IO.File]::WriteAllText((Join-Path $PWD 'dist/bootstrap.ps1'),(Get-Content scripts/bootstrap.ps1.in -Raw).Replace('@WINDOWS_WH_SHA@',$winHash).Replace('@LICENSE_SHA@',$licenseHash),[Text.UTF8Encoding]::new($false))
+ [IO.File]::WriteAllText((Join-Path $PWD 'dist/bootstrap.sh'),(Get-Content scripts/bootstrap.sh.in -Raw).Replace('@LINUX_WH_SHA@',$linuxHash).Replace('@LICENSE_SHA@',$licenseHash).Replace("`r`n","`n"),[Text.UTF8Encoding]::new($false))
+ $assets=@('wh-windows-amd64.exe','wh-linux-amd64','iroh-ssh-windows-amd64.exe','iroh-ssh-linux-amd64','bootstrap.ps1','bootstrap.sh','licenses.zip')
  $lines=foreach($name in $assets){(Get-FileHash ('dist/'+$name)).Hash.ToLower()+'  '+$name}
  [IO.File]::WriteAllText((Join-Path $PWD 'dist/SHA256SUMS'),($lines -join "`n")+"`n",[Text.UTF8Encoding]::new($false))
- if($Publish){ gh release create v0.1.0 @($assets|ForEach-Object{'dist/'+$_}) dist/SHA256SUMS LICENSE THIRD_PARTY.md --title 'SSH Wormhole 0.1.0' --notes-file RELEASE.md; if($LASTEXITCODE){throw 'Release failed'} }
+ if($Publish){ gh release create v0.1.0 @($assets|ForEach-Object{'dist/'+$_}) dist/SHA256SUMS LICENSE THIRD_PARTY.md --prerelease --title 'SSH Wormhole 0.1.0' --notes-file RELEASE.md; if($LASTEXITCODE){throw 'Release failed'} }
 } finally { $env:GOOS=$null; Pop-Location }

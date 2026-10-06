@@ -59,6 +59,11 @@ func prepareCommand(cmd *exec.Cmd) {
 	}
 	cmd.WaitDelay = 2 * time.Second
 }
+func finishCommand(cmd *exec.Cmd) {
+	if cmd.Process != nil {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+}
 func shellCommand(command string) (string, []string) { return "bash", []string{"-lc", command} }
 func elevate() error {
 	exe, e := os.Executable()

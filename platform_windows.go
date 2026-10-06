@@ -109,6 +109,7 @@ func containHost() error {
 }
 func prepareChild(cmd *exec.Cmd)   { cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true} }
 func prepareCommand(cmd *exec.Cmd) { prepareChild(cmd) }
+func finishCommand(cmd *exec.Cmd)  {}
 func shellCommand(command string) (string, []string) {
 	return "powershell.exe", []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command}
 }

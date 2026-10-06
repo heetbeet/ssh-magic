@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gofrs/flock"
 	"github.com/jpillora/sshd-lite/sshd"
@@ -280,7 +281,7 @@ func key() (ssh.Signer, []byte, error) {
 }
 func clean(s string) string {
 	return strings.Map(func(r rune) rune {
-		if r < 32 || r == 127 {
+		if unicode.IsControl(r) {
 			return -1
 		}
 		return r
@@ -399,7 +400,8 @@ func openHost(parent context.Context, root string) error {
 		return e
 	}
 	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
+	processExited := make(chan struct{})
+	go func() { done <- cmd.Wait(); close(processExited) }()
 	defer func() { cmd.Process.Kill(); <-done }()
 	ids := make(chan string, 1)
 	go func() {
@@ -421,6 +423,8 @@ func openHost(parent context.Context, root string) error {
 	var endpoint string
 	select {
 	case endpoint = <-ids:
+	case <-processExited:
+		return errors.New("Iroh exited before becoming ready")
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-time.After(40 * time.Second):
@@ -459,6 +463,9 @@ func openHost(parent context.Context, root string) error {
 	select {
 	case r := <-result:
 		if r.Error != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("pairing failed: %w", r.Error)
 		}
 		if !r.OK {
@@ -466,6 +473,8 @@ func openHost(parent context.Context, root string) error {
 		}
 	case <-ctx.Done():
 		return nil
+	case <-processExited:
+		return errors.New("Iroh stopped while waiting for pairing")
 	}
 	d.ClientKey = ""
 	for i := range cpem {
@@ -485,8 +494,14 @@ func openHost(parent context.Context, root string) error {
 		return errors.New("no SSH authentication after pairing; access closed")
 	case <-ctx.Done():
 		return nil
+	case <-processExited:
+		return errors.New("Iroh stopped before SSH authentication")
 	}
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-processExited:
+		return errors.New("Iroh stopped; access closed")
+	}
 	fmt.Println("Access closed.")
 	return nil
 }
