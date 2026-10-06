@@ -2,30 +2,51 @@
 # Define the whole bootstrap before running it, so a truncated download cannot install.
 main() {
 set -euo pipefail
-[[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || { echo 'This release supports Linux x64.' >&2; exit 1; }
-for tool in curl sha256sum flock; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
+os=$(uname -s) arch=$(uname -m)
+# A Rosetta shell on Apple Silicon reports x86_64; prefer the native binary.
+if [[ $os == Darwin && $arch == x86_64 && $(sysctl -n sysctl.proc_translated 2>/dev/null || true) == 1 ]]; then arch=arm64; fi
+case "$os/$arch" in
+ Linux/x86_64) platform=linux-amd64 magic='@LINUX_MAGIC_SHA@' iroh='6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826' ;;
+ Darwin/arm64) platform=darwin-arm64 magic='@DARWIN_ARM64_MAGIC_SHA@' iroh='@DARWIN_ARM64_IROH_SHA@' ;;
+ Darwin/x86_64) platform=darwin-amd64 magic='@DARWIN_AMD64_MAGIC_SHA@' iroh='064094cd96d51d1dfedecec37d01138dc521c69739ddc19b66367a7e318bca4a' ;;
+ *) echo 'This release supports Linux x64 and macOS (Apple Silicon or Intel).' >&2; exit 1 ;;
+esac
+if [[ $os == Darwin ]]; then sum=(shasum -a 256); else sum=(sha256sum); fi
+for tool in curl "${sum[0]}"; do command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }; done
+[[ $os == Darwin ]] || command -v flock >/dev/null || { echo 'Install flock first.' >&2; exit 1; }
 umask 077
-version=0.1.6
+version=0.1.7
 base="https://github.com/heetbeet/ssh-magic/releases/download/v$version"
-root="${SSH_MAGIC_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic}"
+if [[ $os == Darwin ]]; then root="${SSH_MAGIC_HOME:-$HOME/Library/Caches/ssh-magic}"; else root="${SSH_MAGIC_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/ssh-magic}"; fi
 dir="$root/bin/$version"
 mkdir -p "$dir"
 chmod 700 "$root" "$dir"
 exec 9>"$root/install.lock"
-flock -w 120 9 || { echo 'Another download is still running. Retry shortly.' >&2; exit 1; }
+# The same flock(2) lock as ssh-magic install. macOS has no flock(1): newer lockf(1)
+# locks a descriptor, and Perl's flock covers older releases. Exit 75 means timeout.
+locked=0
+if [[ $os != Darwin ]]; then flock -w 120 9 || locked=$?
+else
+ lockf -s -t 120 9 2>/dev/null || locked=$?
+ if [[ $locked != 0 && $locked != 75 ]]; then
+  locked=0
+  perl -MFcntl=:flock -e 'open(my $f, ">&=", 9) or exit 1; for (1..120) { exit 0 if flock($f, LOCK_EX|LOCK_NB); sleep 1 } exit 75' || locked=$?
+ fi
+fi
+[[ $locked != 127 ]] || { echo 'Install lockf or perl first.' >&2; exit 1; }
+[[ $locked == 0 ]] || { echo 'Another download is still running. Retry shortly.' >&2; exit 1; }
 fetch() {
  local dest="$dir/$1" asset="$2" hash="$3" tmp
- if [[ -f "$dest" ]] && echo "$hash  $dest" | sha256sum -c --status; then return; fi
+ if [[ -f "$dest" ]] && echo "$hash  $dest" | "${sum[@]}" -c --status; then return; fi
  tmp=$(mktemp "$dir/.download.XXXXXX")
  if ! curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 "$base/$asset" -o "$tmp"; then rm -f "$tmp"; return 1; fi
- if ! echo "$hash  $tmp" | sha256sum -c --status; then rm -f "$tmp"; echo "Checksum mismatch: $asset" >&2; return 1; fi
+ if ! echo "$hash  $tmp" | "${sum[@]}" -c --status; then rm -f "$tmp"; echo "Checksum mismatch: $asset" >&2; return 1; fi
  chmod 700 "$tmp"
  mv -f "$tmp" "$dest"
 }
-fetch ssh-magic ssh-magic-linux-amd64 '@LINUX_MAGIC_SHA@'
-fetch iroh-ssh iroh-ssh-linux-amd64 '6e39a6b22f14d683598600350ca642d3b67fd0b0a2f2a7b29928ad6cdf032826'
+fetch ssh-magic "ssh-magic-$platform" "$magic"
+fetch iroh-ssh "iroh-ssh-$platform" "$iroh"
 fetch licenses.zip licenses.zip '@LICENSE_SHA@'
-flock -u 9
 exec 9>&-
 if [[ $# == 0 ]]; then set -- open; fi
 if [[ ! -t 0 && -t 1 ]]; then exec "$dir/ssh-magic" "$@" < /dev/tty; fi

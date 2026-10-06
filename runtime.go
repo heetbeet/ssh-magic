@@ -17,6 +17,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// Iroh SSH 0.2.12 publishes only an x86_64 macOS binary. The arm64 binary is
+// built from the same pinned source by scripts/build-iroh-macos.sh.
+const irohDarwinARM64 = "1c4dff50c7ac9e78e122aa431bb0d5a32c4793b2d68c84b535ba6800bd981fbf"
+
 func sidecar() (string, error) {
 	exe, e := os.Executable()
 	if e != nil {
@@ -27,6 +31,12 @@ func sidecar() (string, error) {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 		expected = "d50813aea4425c2113edcb889ffcc1a97f5a0d85517a35ef56114de45d8bda64"
+	}
+	if runtime.GOOS == "darwin" {
+		expected = "064094cd96d51d1dfedecec37d01138dc521c69739ddc19b66367a7e318bca4a"
+		if runtime.GOARCH == "arm64" {
+			expected = irohDarwinARM64
+		}
 	}
 	path := filepath.Join(filepath.Dir(exe), name)
 	f, e := os.Open(path)
@@ -42,6 +52,15 @@ func sidecar() (string, error) {
 		return "", errors.New("Iroh component checksum mismatch; rerun the bootstrap")
 	}
 	return path, nil
+}
+
+// startChild starts a helper process whose lifetime is bound to this process.
+func startChild(cmd *exec.Cmd) error {
+	if e := cmd.Start(); e != nil {
+		return e
+	}
+	trackChild(cmd)
+	return nil
 }
 
 // Exec requests own a cancellable process group. The client's stdin EOF alone
@@ -66,7 +85,10 @@ func commandHandler(ctx context.Context, _ net.Addr) (xssh.ExecHandler, io.Close
 		cmd.Stdin = sess.Channel
 		cmd.Stdout = sess.Channel
 		cmd.Stderr = sess.Channel.Stderr()
-		e := cmd.Run()
+		e := startChild(cmd)
+		if e == nil {
+			e = cmd.Wait()
+		}
 		finishCommand(cmd)
 		status := uint32(0)
 		if e != nil {

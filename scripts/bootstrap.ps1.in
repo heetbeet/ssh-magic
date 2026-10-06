@@ -9,7 +9,7 @@ function FileHash($file) {
 }
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'This release supports Windows x64.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$version = '0.1.6'
+$version = '0.1.7'
 $base = 'https://github.com/heetbeet/ssh-magic/releases/download/v'+$version
 $root = if ($env:SSH_MAGIC_HOME) { [IO.Path]::GetFullPath($env:SSH_MAGIC_HOME) } else { Join-Path $env:LOCALAPPDATA 'ssh-magic' }
 $dir = Join-Path $root ('bin\'+$version)
