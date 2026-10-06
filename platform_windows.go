@@ -148,7 +148,7 @@ func elevate() error {
 $p=Join-Path $env:ProgramData ('ssh-wormhole-stage-'+[guid]::NewGuid())
 New-Item -ItemType Directory $p|Out-Null
 try {
- $acl=Get-Acl $p; $acl.SetAccessRuleProtection($true,$false)
+ $acl=New-Object System.Security.AccessControl.DirectorySecurity; $acl.SetAccessRuleProtection($true,$false)
  $admins=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
  $acl.SetOwner($admins)
  foreach($s in @('S-1-5-32-544','S-1-5-18')){$id=New-Object System.Security.Principal.SecurityIdentifier($s);$rule=New-Object System.Security.AccessControl.FileSystemAccessRule($id,'FullControl','ContainerInherit,ObjectInherit','None','Allow');$acl.AddAccessRule($rule)}

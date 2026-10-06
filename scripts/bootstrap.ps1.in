@@ -2,13 +2,13 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 if (-not [Environment]::Is64BitOperatingSystem -or $env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { throw 'This release supports Windows x64.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$version = '0.1.0'
+$version = '0.1.1'
 $base = 'https://github.com/heetbeet/ssh-wormhole/releases/download/v'+$version
 $root = if ($env:WH_HOME) { [IO.Path]::GetFullPath($env:WH_HOME) } else { Join-Path $env:LOCALAPPDATA 'ssh-wormhole' }
 $dir = Join-Path $root ('bin\'+$version)
 New-Item -ItemType Directory -Force $dir | Out-Null
 # A user-only ACL, with inheritance disabled, also protects newly downloaded files.
-$acl = Get-Acl $root
+$acl = New-Object Security.AccessControl.DirectorySecurity
 $acl.SetAccessRuleProtection($true,$false)
 $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
 foreach ($id in @($sid,[Security.Principal.SecurityIdentifier]'S-1-5-18')) {

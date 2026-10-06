@@ -34,7 +34,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 const lifetime = 2 * time.Hour
 
 var endpointPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
